@@ -1,10 +1,17 @@
 {
-  "name": "guns-checker-netlify",
+  "name": "guns-lol-checker",
   "version": "1.0.0",
-  "main": "netlify/functions/check-username.js",
-  "license": "MIT",
+  "description": "guns.lol username availability checker",
+  "scripts": {
+    "build": "echo 'No build step required'",
+    "start": "netlify dev"
+  },
   "dependencies": {
-    "@sparticuz/chromium": "^109.0.5414.87",
-    "puppeteer-core": "^19.0.0"
-  }
+    "@sparticuz/chromium": "^122.0.0",
+    "puppeteer-core": "^21.3.8"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "license": "MIT"
 }
