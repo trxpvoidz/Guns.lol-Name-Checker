@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>guns.lol Username Checker</title>
   <style>
     body {
@@ -12,19 +12,22 @@
       margin: 0;
       padding: 20px;
     }
-
     h1 {
       text-align: center;
       margin-bottom: 10px;
     }
-
-    #genre-select, #start-btn {
+    #genre-select,
+    #username-input,
+    #start-btn,
+    #stop-btn,
+    #check-one-btn {
       display: block;
       margin: 10px auto;
       font-size: 16px;
       padding: 8px;
+      width: 80%;
+      max-width: 400px;
     }
-
     #log {
       background-color: #111;
       padding: 15px;
@@ -33,12 +36,16 @@
       overflow-y: auto;
       white-space: pre-wrap;
       font-size: 14px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
   <h1>guns.lol Username Checker</h1>
+
+  <input id="username-input" type="text" placeholder="Enter a username to check" />
+  <button id="check-one-btn">Check One</button>
 
   <select id="genre-select">
     <option value="rare">Rare</option>
@@ -48,7 +55,8 @@
     <option value="short">Short</option>
   </select>
 
-  <button id="start-btn">Start Scan</button>
+  <button id="start-btn">Start Bulk Scan</button>
+  <button id="stop-btn">Stop Scan</button>
 
   <div id="log"></div>
 
@@ -63,7 +71,12 @@
 
     const logEl = document.getElementById("log");
     const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+    const checkOneBtn = document.getElementById("check-one-btn");
+    const usernameInput = document.getElementById("username-input");
     const genreSelect = document.getElementById("genre-select");
+
+    let stopFlag = false;
 
     const log = (msg) => {
       logEl.textContent += msg + "\n";
@@ -89,11 +102,16 @@
     };
 
     startBtn.addEventListener("click", async () => {
-      log("🔍 Starting scan...");
+      stopFlag = false;
+      log("🔍 Starting bulk scan...");
       const genre = genreSelect.value;
       const names = genres[genre];
 
       for (const name of names) {
+        if (stopFlag) {
+          log("⛔ Scan stopped by user.");
+          break;
+        }
         log(`⏳ Checking: ${name}`);
         const isAvailable = await checkUsername(name);
 
@@ -101,12 +119,39 @@
           log(`✅ Available: ${name}`);
           window.open(`https://guns.lol/${name}`, "_blank");
         } else {
-          log(`❌ Taken or not available: ${name}`);
+          log(`❌ Taken: ${name}`);
         }
+
+        await new Promise(r => setTimeout(r, 2500)); // 2.5s delay to avoid rate limits
       }
 
-      log("🎉 Done!");
+      if (!stopFlag) log("🎉 Bulk scan complete.");
+    });
+
+    stopBtn.addEventListener("click", () => {
+      stopFlag = true;
+      log("⛔ Stop requested by user.");
+    });
+
+    checkOneBtn.addEventListener("click", async () => {
+      const name = usernameInput.value.trim();
+
+      if (!name) {
+        log("⚠️ Please enter a username to check.");
+        return;
+      }
+
+      log(`⏳ Checking: ${name}...`);
+      const isAvailable = await checkUsername(name);
+
+      if (isAvailable) {
+        log(`✅ ${name} is available!`);
+        window.open(`https://guns.lol/${name}`, "_blank");
+      } else {
+        log(`❌ ${name} is taken.`);
+      }
     });
   </script>
+
 </body>
 </html>
