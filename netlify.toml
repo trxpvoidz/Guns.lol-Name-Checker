@@ -1,4 +1,8 @@
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["@sparticuz/chromium", "puppeteer-core"]
-  included_files = ["node_modules/@sparticuz/chromium/**"]
+[build]
+  functions = "netlify/functions"
+  command = "npm install"
+
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
