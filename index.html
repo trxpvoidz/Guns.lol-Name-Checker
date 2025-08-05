@@ -1,131 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>guns.lol Username Checker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
+      background-color: #0f0f0f;
+      color: #f0f0f0;
       font-family: monospace;
-      background-color: #0a0a0a;
-      color: #00ff99;
+      margin: 0;
       padding: 20px;
-      max-width: 700px;
-      margin: auto;
     }
-    input, select, button {
-      padding: 10px;
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #genre-select, #start-btn {
+      display: block;
+      margin: 10px auto;
       font-size: 16px;
-      margin: 5px 0;
-      width: 100%;
-      box-sizing: border-box;
+      padding: 8px;
     }
+
     #log {
-      background: #000;
-      border: 1px solid #00ff99;
-      padding: 10px;
-      margin-top: 20px;
+      background-color: #111;
+      padding: 15px;
+      border: 1px solid #444;
       height: 300px;
-      overflow-y: scroll;
+      overflow-y: auto;
       white-space: pre-wrap;
-    }
-    @media (max-width: 600px) {
-      body {
-        font-size: 14px;
-      }
-      input, select, button {
-        font-size: 14px;
-      }
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
-  <h1>🔍 guns.lol Username Checker</h1>
+  <h1>guns.lol Username Checker</h1>
 
-  <input type="text" id="username" placeholder="Enter username">
-  <button onclick="checkUsername()">Check One</button>
-
-  <select id="genre">
-    <option value="">-- Genre --</option>
-    <option value="lofi">Lofi</option>
-    <option value="dark">Dark</option>
+  <select id="genre-select">
     <option value="rare">Rare</option>
+    <option value="lofi">Lofi</option>
     <option value="cool">Cool</option>
+    <option value="dark">Dark</option>
+    <option value="short">Short</option>
   </select>
-  <button onclick="generateName()">🎲 Generate</button>
 
-  <button onclick="bulkCheck()">🔁 Bulk Check (20)</button>
-  <button onclick="saveResults()">💾 Save Results</button>
+  <button id="start-btn">Start Scan</button>
 
-  <div id="log">Console log:
-</div>
+  <div id="log"></div>
 
   <script>
-    const NETLIFY_FUNCTION_URL = "https://guns-lol-name-checker.netlify.app/.netlify/functions/check-username";
-    const found = [];
+    const genres = {
+      rare: ["rxq", "loz", "v7x", "flv", "0xd", "h1z", "yxk", "grim", "zenx"],
+      lofi: ["lofi", "mood", "fade", "mid", "chill", "foggy", "dream", "cloud"],
+      cool: ["vortex", "nova", "dash", "edge", "bolt", "blaze", "ice", "drip"],
+      dark: ["void", "dark", "grim", "shade", "night", "abyss", "nox", "doom"],
+      short: ["aa", "mx", "cy", "qz", "ze", "lo", "ka", "vx"]
+    };
 
-    function log(msg) {
-      const logBox = document.getElementById("log");
-      logBox.textContent += msg + "\n";
-      logBox.scrollTop = logBox.scrollHeight;
-    }
+    const logEl = document.getElementById("log");
+    const startBtn = document.getElementById("start-btn");
+    const genreSelect = document.getElementById("genre-select");
 
-    function checkUsername(name = null, fromBulk = false) {
-      const input = document.getElementById("username");
-      const username = name || input.value.trim();
-      if (!username) return alert("Enter a username first!");
+    const log = (msg) => {
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    };
 
-      log(`⏳ Checking ${username}...`);
-      fetch(\`\${NETLIFY_FUNCTION_URL}?username=\${encodeURIComponent(username)}\`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.available) {
-            log(`✅ \${data.username} is AVAILABLE!`);
-            found.push(data.username);
-          } else {
-            log(`❌ \${data.username} is taken.`);
-          }
-        })
-        .catch(err => {
-          log(`⚠️ Error: \${err.message}`);
+    const checkUsername = async (name) => {
+      try {
+        const res = await fetch("/.netlify/functions/check-username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: name }),
         });
-    }
 
-    function generateName() {
-      const genre = document.getElementById("genre").value;
-      const sets = {
-        lofi: ["lofi", "drift", "wave", "fade", "echo", "vibe"],
-        dark: ["grim", "void", "shade", "dark", "crypt", "soul"],
-        rare: ["qv", "xr", "vl", "yn", "zm", "fz"],
-        cool: ["ice", "cash", "zen", "nova", "flex", "storm"]
-      };
-      const prefix = sets[genre]?.[Math.floor(Math.random() * sets[genre].length)] || "user";
-      const suffix = Math.random().toString(36).substring(2, 4);
-      const name = prefix + suffix;
-      document.getElementById("username").value = name;
-      checkUsername(name);
-    }
+        if (!res.ok) throw new Error("Request failed");
 
-    function bulkCheck() {
-      log("🔁 Starting bulk scan...");
-      for (let i = 0; i < 20; i++) {
-        generateName();
+        const { available } = await res.json();
+        return available;
+      } catch (err) {
+        console.error(err);
+        return false;
       }
-    }
+    };
 
-    function saveResults() {
-      if (found.length === 0) {
-        alert("No usernames to save.");
-        return;
+    startBtn.addEventListener("click", async () => {
+      log("🔍 Starting scan...");
+      const genre = genreSelect.value;
+      const names = genres[genre];
+
+      for (const name of names) {
+        log(`⏳ Checking: ${name}`);
+        const isAvailable = await checkUsername(name);
+
+        if (isAvailable) {
+          log(`✅ Available: ${name}`);
+          window.open(`https://guns.lol/${name}`, "_blank");
+        } else {
+          log(`❌ Taken or not available: ${name}`);
+        }
       }
-      const blob = new Blob([found.join("\n")], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "available_usernames.txt";
-      link.click();
-    }
+
+      log("🎉 Done!");
+    });
   </script>
-
 </body>
 </html>
