@@ -3,26 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <title>guns.lol Username Checker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: monospace;
-      background-color: #111;
-      color: #0f0;
+      background-color: #0a0a0a;
+      color: #00ff99;
       padding: 20px;
+      max-width: 700px;
+      margin: auto;
     }
     input, select, button {
-      padding: 8px;
+      padding: 10px;
       font-size: 16px;
-      margin-right: 5px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
     }
     #log {
       background: #000;
-      border: 1px solid #0f0;
+      border: 1px solid #00ff99;
       padding: 10px;
       margin-top: 20px;
       height: 300px;
       overflow-y: scroll;
       white-space: pre-wrap;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 14px;
+      }
+      input, select, button {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
@@ -31,7 +44,7 @@
   <h1>🔍 guns.lol Username Checker</h1>
 
   <input type="text" id="username" placeholder="Enter username">
-  <button onclick="checkUsername()">Check</button>
+  <button onclick="checkUsername()">Check One</button>
 
   <select id="genre">
     <option value="">-- Genre --</option>
@@ -42,10 +55,15 @@
   </select>
   <button onclick="generateName()">🎲 Generate</button>
 
-  <div id="log">Console log:\n</div>
+  <button onclick="bulkCheck()">🔁 Bulk Check (20)</button>
+  <button onclick="saveResults()">💾 Save Results</button>
+
+  <div id="log">Console log:
+</div>
 
   <script>
     const NETLIFY_FUNCTION_URL = "https://your-site.netlify.app/.netlify/functions/check-username";
+    const found = [];
 
     function log(msg) {
       const logBox = document.getElementById("log");
@@ -53,22 +71,24 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function checkUsername() {
-      const name = document.getElementById("username").value.trim();
-      if (!name) return alert("Enter a username first!");
+    function checkUsername(name = null, fromBulk = false) {
+      const input = document.getElementById("username");
+      const username = name || input.value.trim();
+      if (!username) return alert("Enter a username first!");
 
-      log(`⏳ Checking ${name}...`);
-      fetch(`${NETLIFY_FUNCTION_URL}?username=${encodeURIComponent(name)}`)
+      log(`⏳ Checking ${username}...`);
+      fetch(\`\${NETLIFY_FUNCTION_URL}?username=\${encodeURIComponent(username)}\`)
         .then(res => res.json())
         .then(data => {
           if (data.available) {
-            log(`✅ ${data.username} is AVAILABLE!`);
+            log(`✅ \${data.username} is AVAILABLE!`);
+            found.push(data.username);
           } else {
-            log(`❌ ${data.username} is taken.`);
+            log(`❌ \${data.username} is taken.`);
           }
         })
         .catch(err => {
-          log(`⚠️ Error: ${err.message}`);
+          log(`⚠️ Error: \${err.message}`);
         });
     }
 
@@ -84,7 +104,26 @@
       const suffix = Math.random().toString(36).substring(2, 4);
       const name = prefix + suffix;
       document.getElementById("username").value = name;
-      checkUsername();
+      checkUsername(name);
+    }
+
+    function bulkCheck() {
+      log("🔁 Starting bulk scan...");
+      for (let i = 0; i < 20; i++) {
+        generateName();
+      }
+    }
+
+    function saveResults() {
+      if (found.length === 0) {
+        alert("No usernames to save.");
+        return;
+      }
+      const blob = new Blob([found.join("\n")], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "available_usernames.txt";
+      link.click();
     }
   </script>
 
