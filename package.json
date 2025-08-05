@@ -1,0 +1,10 @@
+{
+  "name": "guns-checker-netlify",
+  "version": "1.0.0",
+  "main": "netlify/functions/check-username.js",
+  "license": "MIT",
+  "dependencies": {
+    "@sparticuz/chromium": "^109.0.5414.87",
+    "puppeteer-core": "^19.0.0"
+  }
+}
