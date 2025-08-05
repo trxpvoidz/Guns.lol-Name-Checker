@@ -10,7 +10,6 @@ exports.handler = async (event) => {
     };
   }
 
-  const url = `https://guns.lol/${name}`;
   let browser;
 
   try {
@@ -22,7 +21,7 @@ exports.handler = async (event) => {
     });
 
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.goto(`https://guns.lol/${name}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     const claimable = await page.evaluate(() => {
       const h1 = document.querySelector('h1');
