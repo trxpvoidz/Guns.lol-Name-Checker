@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>guns.lol Username Checker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
       background: #0f0f0f;
@@ -12,13 +12,14 @@
       text-align: center;
       padding: 2rem;
     }
-    button, input {
+    button, input, select {
       padding: 10px;
       margin: 5px;
       font-size: 16px;
       background: #1f1f1f;
       color: #eee;
       border: 1px solid #444;
+      border-radius: 4px;
     }
     #log {
       margin-top: 2rem;
@@ -28,6 +29,7 @@
       border: 1px solid #444;
       max-height: 300px;
       overflow-y: auto;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -47,7 +49,7 @@
   </div>
 
   <div>
-    <input id="manual" type="text" placeholder="Check a username manually">
+    <input id="manual" type="text" placeholder="Check a username manually" />
     <button onclick="manualCheck()">Check</button>
   </div>
 
@@ -66,40 +68,30 @@
 
     async function checkUsername(name) {
       try {
-        const res = await fetch('/.netlify/functions/check?name=' + name);
+        const res = await fetch('/api/check?name=' + encodeURIComponent(name));
+        if (!res.ok) {
+          const err = await res.json();
+          log(`❌ Error checking ${name}: ${err.error || 'Unknown error'}`);
+          return false;
+        }
         const data = await res.json();
         if (data.available) {
           log(`✅ ${name} is available!`);
           window.open(`https://guns.lol/${name}`, '_blank');
+          return true;
         } else {
           log(`❌ ${name} is taken.`);
+          return false;
         }
       } catch (err) {
-        log(`❗ Error checking ${name}: ${err.message}`);
+        log(`❗ Network error checking ${name}: ${err.message}`);
+        return false;
       }
     }
 
     async function manualCheck() {
       const name = document.getElementById('manual').value.trim();
-      if (name) checkUsername(name);
-    }
-
-    async function startScan() {
-      scanning = true;
-      const genre = document.getElementById('genre').value;
-      const generated = generateNames(genre, 30);
-
-      for (const name of generated) {
-        if (!scanning) break;
-        await checkUsername(name);
-        await new Promise(r => setTimeout(r, 5000)); // 5s delay
-      }
-      log("🔁 Scan finished.");
-    }
-
-    function stopScan() {
-      scanning = false;
-      log("⛔ Scanning stopped.");
+      if (name) await checkUsername(name);
     }
 
     function generateNames(type, count) {
@@ -117,6 +109,26 @@
         names.add((base + suffix).toLowerCase());
       }
       return [...names];
+    }
+
+    async function startScan() {
+      scanning = true;
+      const genre = document.getElementById('genre').value;
+      log(`▶️ Starting scan with genre "${genre}"...`);
+      const names = generateNames(genre, 30);
+      for (const name of names) {
+        if (!scanning) break;
+        await checkUsername(name);
+        await new Promise(r => setTimeout(r, 5000));
+      }
+      if (scanning) log("🔁 Scan finished.");
+      else log("⛔ Scan stopped by user.");
+      scanning = false;
+    }
+
+    function stopScan() {
+      scanning = false;
+      log("⛔ Stopping scan...");
     }
   </script>
 </body>
