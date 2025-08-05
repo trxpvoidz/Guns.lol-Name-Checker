@@ -20,25 +20,38 @@ exports.handler = async function (event) {
 
   try {
     const page = await browser.newPage();
+
+    // Pretend to be a real browser
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/116 Safari/537.36");
+
     await page.goto(`https://guns.lol/${username}`, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle2",
+      timeout: 30000,
     });
+
+    const html = await page.content();
 
     const available = await page.evaluate(() => {
       const h1 = document.querySelector("h1");
-      if (!h1 || !h1.textContent.toLowerCase().includes("not claimed")) return false;
-
-      const claimLink = [...document.querySelectorAll("a")].find(a =>
-        a.textContent.trim().toLowerCase() === "claim now!"
+      const h3 = document.querySelector("h3");
+      const claimBtn = [...document.querySelectorAll("a")].find(
+        a => a.textContent.toLowerCase().includes("claim")
       );
-      return !!claimLink;
+
+      return (
+        h1 &&
+        h1.textContent.toLowerCase().includes("not claimed") &&
+        h3 &&
+        h3.textContent.toLowerCase().includes("claim this name") &&
+        !!claimBtn
+      );
     });
 
     await browser.close();
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ available }),
+      body: JSON.stringify({ available, htmlSnippet: html.slice(0, 1000) }),
     };
   } catch (err) {
     await browser.close();
