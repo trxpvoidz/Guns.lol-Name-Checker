@@ -1,60 +1,46 @@
-const chromium = require("@sparticuz/chromium");
-const puppeteer = require("puppeteer-core");
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 
-exports.handler = async function (event) {
-  const { username } = event.body ? JSON.parse(event.body) : event.queryStringParameters;
-  if (!username) {
+exports.handler = async (event) => {
+  const name = event.queryStringParameters.name;
+  if (!name || name.length > 20) {
     return {
       statusCode: 400,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Missing username" }),
+      body: JSON.stringify({ error: 'Invalid name' }),
     };
   }
 
+  const url = `https://guns.lol/${name}`;
   let browser;
+
   try {
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: chromium.headless
     });
+
     const page = await browser.newPage();
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/116 Safari/537.36");
-    await page.goto(`https://guns.lol/${username}`, {
-      waitUntil: "networkidle2",
-      timeout: 30000,
-    });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
-    // Optional: Debug snippet
-    const html = await page.content();
-    console.log("HTML snippet:", html.slice(0, 200));
-
-    const available = await page.evaluate(() => {
-      const h1 = document.querySelector("h1");
-      const h3 = document.querySelector("h3");
-      const claimLink = [...document.querySelectorAll("a")].find(a =>
-        a.textContent.trim().toLowerCase() === "claim now!"
-      );
-      return (
-        h1?.innerText.toLowerCase().includes("not claimed") &&
-        h3?.innerText.toLowerCase().includes("claim this name") &&
-        !!claimLink
-      );
+    const claimable = await page.evaluate(() => {
+      const h1 = document.querySelector('h1');
+      const btns = Array.from(document.querySelectorAll('a')).map(a => a.textContent.trim());
+      return h1 && h1.innerText.toLowerCase().includes("not claimed") && btns.includes("Claim Now!");
     });
 
     await browser.close();
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ available }),
+      body: JSON.stringify({ available: claimable }),
     };
-  } catch (err) {
+
+  } catch (error) {
     if (browser) await browser.close();
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Error checking username", details: err.message }),
+      body: JSON.stringify({ error: 'Unknown error occurred', detail: error.message }),
     };
   }
 };
