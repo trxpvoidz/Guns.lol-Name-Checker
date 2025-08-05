@@ -1,45 +1,42 @@
-const chromium = require('@sparticuz/chromium');
-const puppeteer = require('puppeteer-core');
+const chromium = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
-exports.handler = async (event) => {
+exports.handler = async function(event) {
   const name = event.queryStringParameters.name;
-  if (!name || name.length > 20) {
+  if (!name) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Invalid name' }),
+      body: JSON.stringify({ error: "No username provided." })
     };
   }
 
-  let browser;
-
   try {
-    browser = await puppeteer.launch({
+    const url = `https://guns.lol/${encodeURIComponent(name)}`;
+    const browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
-    await page.goto(`https://guns.lol/${name}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
 
-    const claimable = await page.evaluate(() => {
-      const h1 = document.querySelector('h1');
-      const btns = Array.from(document.querySelectorAll('a')).map(a => a.textContent.trim());
-      return h1 && h1.innerText.toLowerCase().includes("not claimed") && btns.includes("Claim Now!");
+    const isAvailable = await page.evaluate(() => {
+      const h1 = document.querySelector("h1");
+      const claim = document.querySelector("a[href*='claim']");
+      return h1 && h1.innerText.includes("not claimed") && claim;
     });
 
     await browser.close();
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ available: claimable }),
+      body: JSON.stringify({ available: !!isAvailable })
     };
-
-  } catch (error) {
-    if (browser) await browser.close();
+  } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Unknown error occurred', detail: error.message }),
+      body: JSON.stringify({ error: err.message || "Unknown error" })
     };
   }
 };
