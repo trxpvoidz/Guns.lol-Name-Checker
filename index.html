@@ -2,133 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>guns.lol Username Checker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Guns.lol Username Checker</title>
   <style>
     body {
-      background: #0f0f0f;
-      color: #eee;
+      background: #0e0e0e;
+      color: #fff;
       font-family: monospace;
-      text-align: center;
-      padding: 2rem;
+      padding: 20px;
     }
-    button, input, select {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
+    input, button {
       background: #1f1f1f;
-      color: #eee;
       border: 1px solid #444;
-      border-radius: 4px;
+      color: #fff;
+      padding: 10px;
+      font-size: 1em;
+      margin: 5px 0;
+      width: 100%;
     }
     #log {
-      margin-top: 2rem;
-      text-align: left;
       background: #111;
-      padding: 1rem;
-      border: 1px solid #444;
-      max-height: 300px;
-      overflow-y: auto;
-      white-space: pre-wrap;
+      border: 1px solid #333;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>🔫 guns.lol Username Checker</h1>
-
-  <div>
-    <label for="genre">Genre:</label>
-    <select id="genre">
-      <option value="lofi">lofi</option>
-      <option value="dark">dark</option>
-      <option value="rare">rare</option>
-      <option value="cool">cool</option>
-    </select>
-    <button onclick="startScan()">Start</button>
-    <button onclick="stopScan()">Stop</button>
-  </div>
-
-  <div>
-    <input id="manual" type="text" placeholder="Check a username manually" />
-    <button onclick="manualCheck()">Check</button>
-  </div>
-
-  <div id="log">Console log:</div>
+  <h1>🔫 Guns.lol Username Checker</h1>
+  <input type="text" id="username" placeholder="Enter username">
+  <button onclick="checkUsername()">Check</button>
+  <button onclick="startScanning()">Start Bulk Scan</button>
+  <button onclick="stopScanning()">Stop</button>
+  <select id="genre">
+    <option value="cool">Cool</option>
+    <option value="dark">Dark</option>
+    <option value="rare">Rare</option>
+    <option value="lofi">Lofi</option>
+  </select>
+  <div id="log"></div>
 
   <script>
-    let scanning = false;
-    const logEl = document.getElementById('log');
+    const log = (msg) => {
+      const el = document.getElementById("log");
+      el.innerHTML += msg + "<br>";
+      el.scrollTop = el.scrollHeight;
+    };
 
-    function log(msg) {
-      const line = document.createElement('div');
-      line.textContent = msg;
-      logEl.appendChild(line);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
+    let stopFlag = false;
 
-    async function checkUsername(name) {
+    async function checkUsername() {
+      const name = document.getElementById("username").value.trim();
+      if (!name) return log("⚠️ Please enter a username.");
+      log("🔍 Checking: " + name);
+
       try {
         const res = await fetch('/api/check?name=' + encodeURIComponent(name));
-        if (!res.ok) {
-          const err = await res.json();
-          log(`❌ Error checking ${name}: ${err.error || 'Unknown error'}`);
-          return false;
-        }
         const data = await res.json();
-        if (data.available) {
-          log(`✅ ${name} is available!`);
-          window.open(`https://guns.lol/${name}`, '_blank');
-          return true;
+
+        if (data.available === true) {
+          log("✅ Available: " + name);
+        } else if (data.available === false) {
+          log("❌ Taken: " + name);
         } else {
-          log(`❌ ${name} is taken.`);
-          return false;
+          log("❗ Error: " + (data.error || "Unknown"));
         }
       } catch (err) {
-        log(`❗ Network error checking ${name}: ${err.message}`);
-        return false;
+        log("❗ Error checking " + name + ": " + err.message);
       }
     }
 
-    async function manualCheck() {
-      const name = document.getElementById('manual').value.trim();
-      if (name) await checkUsername(name);
-    }
+    function generateName(genre) {
+      const cool = ["qx2q", "vpx1", "lxn0", "pynq"];
+      const dark = ["grim", "void", "shade", "cursed"];
+      const rare = ["a3", "xyzz", "prx7", "0nn"];
+      const lofi = ["zen", "aesthetic", "vibe", "dream"];
 
-    function generateNames(type, count) {
-      const sets = {
-        lofi: ["lofi", "zen", "mid", "fade", "cloud"],
-        dark: ["void", "grim", "cold", "ghost", "dark"],
-        rare: ["q", "x", "z", "v", "0", "1", "9"],
-        cool: ["cool", "vibe", "nova", "snx", "fire"]
-      };
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      const names = new Set();
-      while (names.size < count) {
-        const base = sets[type][Math.floor(Math.random() * sets[type].length)];
-        const suffix = [...Array(2)].map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
-        names.add((base + suffix).toLowerCase());
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+      switch (genre) {
+        case "cool": return pick(cool);
+        case "dark": return pick(dark);
+        case "rare": return pick(rare);
+        case "lofi": return pick(lofi);
+        default: return "user" + Math.floor(Math.random() * 9999);
       }
-      return [...names];
     }
 
-    async function startScan() {
-      scanning = true;
-      const genre = document.getElementById('genre').value;
-      log(`▶️ Starting scan with genre "${genre}"...`);
-      const names = generateNames(genre, 30);
-      for (const name of names) {
-        if (!scanning) break;
-        await checkUsername(name);
-        await new Promise(r => setTimeout(r, 5000));
+    async function startScanning() {
+      stopFlag = false;
+      while (!stopFlag) {
+        const genre = document.getElementById("genre").value;
+        const name = generateName(genre);
+        document.getElementById("username").value = name;
+        await checkUsername();
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3s delay to avoid rate limit
       }
-      if (scanning) log("🔁 Scan finished.");
-      else log("⛔ Scan stopped by user.");
-      scanning = false;
     }
 
-    function stopScan() {
-      scanning = false;
-      log("⛔ Stopping scan...");
+    function stopScanning() {
+      stopFlag = true;
+      log("⛔ Scanning stopped.");
     }
   </script>
 </body>
