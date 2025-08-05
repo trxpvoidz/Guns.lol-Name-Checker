@@ -1,48 +1,60 @@
-const puppeteer = require("@sparticuz/chromium");
-const puppeteerCore = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
-exports.handler = async (event) => {
-  const username = event.queryStringParameters.name;
-  const url = `https://guns.lol/${username}`;
+exports.handler = async function (event) {
+  const { username } = event.body ? JSON.parse(event.body) : event.queryStringParameters;
+  if (!username) {
+    return {
+      statusCode: 400,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Missing username" }),
+    };
+  }
 
-  let browser = null;
-
+  let browser;
   try {
-    const executablePath = await puppeteer.executablePath();
-    browser = await puppeteerCore.launch({
-      args: puppeteer.args,
-      defaultViewport: puppeteer.defaultViewport,
-      executablePath,
-      headless: puppeteer.headless,
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+    const page = await browser.newPage();
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/116 Safari/537.36");
+    await page.goto(`https://guns.lol/${username}`, {
+      waitUntil: "networkidle2",
+      timeout: 30000,
     });
 
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    // Optional: Debug snippet
+    const html = await page.content();
+    console.log("HTML snippet:", html.slice(0, 200));
 
-    const isAvailable = await page.evaluate(() => {
+    const available = await page.evaluate(() => {
       const h1 = document.querySelector("h1");
       const h3 = document.querySelector("h3");
-      const claimBtn = [...document.querySelectorAll("a")].find(a =>
-        a.textContent.toLowerCase().includes("claim")
+      const claimLink = [...document.querySelectorAll("a")].find(a =>
+        a.textContent.trim().toLowerCase() === "claim now!"
       );
-
       return (
-        h1?.innerText.includes("not claimed") &&
-        h3?.innerText.includes("Claim this name") &&
-        claimBtn
+        h1?.innerText.toLowerCase().includes("not claimed") &&
+        h3?.innerText.toLowerCase().includes("claim this name") &&
+        !!claimLink
       );
     });
 
+    await browser.close();
     return {
       statusCode: 200,
-      body: JSON.stringify({ available: isAvailable }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ available }),
     };
   } catch (err) {
+    if (browser) await browser.close();
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Unknown error", details: err.message }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: "Error checking username", details: err.message }),
     };
-  } finally {
-    if (browser) await browser.close();
   }
 };
